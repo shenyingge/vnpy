@@ -11,11 +11,12 @@ from .rules import (
     is_trading_minute,
     round_lot,
 )
-from .sources import XtHistorySource, create_xt_history_source
+from .sources import StockAHistoryBackendConfig, XtHistorySource, create_xt_history_source
 
 
 __all__ = [
     "StockAResearchDatafeed",
+    "StockAHistoryBackendConfig",
     "XtHistorySource",
     "create_xt_history_source",
     "import_bar_history",
