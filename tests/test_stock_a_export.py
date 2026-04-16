@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Callable
 
 from vnpy.alpha import AlphaLab
 from vnpy.research.stock_a.datafeed import StockAResearchDatafeed
@@ -8,11 +9,23 @@ from vnpy.trader.object import BarData, HistoryRequest
 
 
 class FakeSource:
-    def __init__(self, bars: list[BarData]) -> None:
-        self.bars = bars
+    def __init__(
+        self,
+        bars: list[BarData] | None = None,
+        bars_by_request: dict[tuple[str, datetime, datetime], list[BarData]] | None = None,
+    ) -> None:
+        self.bars = bars or []
+        self.bars_by_request = bars_by_request or {}
+        self.requests: list[HistoryRequest] = []
+        self.outputs: list[Callable] = []
 
     def query_bar_history(self, req: HistoryRequest, output=print) -> list[BarData]:
-        return list(self.bars)
+        self.requests.append(req)
+        self.outputs.append(output)
+
+        key = (req.vt_symbol, req.start, req.end)
+        bars = self.bars_by_request.get(key, self.bars)
+        return list(bars)
 
 
 def make_bar(dt: datetime, close_price: float) -> BarData:
@@ -37,7 +50,8 @@ def test_import_bar_history_saves_xt_bars_into_alphalab(tmp_path) -> None:
         make_bar(datetime(2024, 1, 2, 9, 30), 10.1),
         make_bar(datetime(2024, 1, 2, 9, 31), 10.2),
     ]
-    datafeed = StockAResearchDatafeed(source=FakeSource(bars))
+    source = FakeSource(bars)
+    datafeed = StockAResearchDatafeed(source=source)
     req = HistoryRequest(
         symbol="600000",
         exchange=Exchange.SSE,
@@ -45,8 +59,9 @@ def test_import_bar_history_saves_xt_bars_into_alphalab(tmp_path) -> None:
         start=datetime(2024, 1, 2, 9, 30),
         end=datetime(2024, 1, 2, 9, 31),
     )
+    output = lambda message: None
 
-    saved = import_bar_history(lab, datafeed, req)
+    saved = import_bar_history(lab, datafeed, req, output=output)
     loaded = lab.load_bar_data(
         "600000.SSE",
         Interval.MINUTE,
@@ -56,22 +71,44 @@ def test_import_bar_history_saves_xt_bars_into_alphalab(tmp_path) -> None:
 
     assert saved == 2
     assert [bar.close_price for bar in loaded] == [10.1, 10.2]
+    assert source.requests == [req]
+    assert source.outputs == [output]
 
 
-def test_import_bar_histories_returns_counts_by_vt_symbol(tmp_path) -> None:
+def test_import_bar_histories_accumulates_counts_by_vt_symbol(tmp_path) -> None:
     lab = AlphaLab(str(tmp_path))
-    bars = [make_bar(datetime(2024, 1, 2, 9, 30), 10.1)]
-    datafeed = StockAResearchDatafeed(source=FakeSource(bars))
+    first_req = HistoryRequest(
+        symbol="600000",
+        exchange=Exchange.SSE,
+        interval=Interval.MINUTE,
+        start=datetime(2024, 1, 2, 9, 30),
+        end=datetime(2024, 1, 2, 9, 30),
+    )
+    second_req = HistoryRequest(
+        symbol="600000",
+        exchange=Exchange.SSE,
+        interval=Interval.MINUTE,
+        start=datetime(2024, 1, 2, 9, 31),
+        end=datetime(2024, 1, 2, 9, 32),
+    )
+    source = FakeSource(
+        bars_by_request={
+            (first_req.vt_symbol, first_req.start, first_req.end): [
+                make_bar(datetime(2024, 1, 2, 9, 30), 10.1)
+            ],
+            (second_req.vt_symbol, second_req.start, second_req.end): [
+                make_bar(datetime(2024, 1, 2, 9, 31), 10.2),
+                make_bar(datetime(2024, 1, 2, 9, 32), 10.3),
+            ],
+        }
+    )
+    datafeed = StockAResearchDatafeed(source=source)
     requests = [
-        HistoryRequest(
-            symbol="600000",
-            exchange=Exchange.SSE,
-            interval=Interval.MINUTE,
-            start=datetime(2024, 1, 2, 9, 30),
-            end=datetime(2024, 1, 2, 9, 30),
-        )
+        first_req,
+        second_req,
     ]
 
     result = import_bar_histories(lab, datafeed, requests)
 
-    assert result == {"600000.SSE": 1}
+    assert result == {"600000.SSE": 3}
+    assert source.requests == [first_req, second_req]
