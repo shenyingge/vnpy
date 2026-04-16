@@ -67,6 +67,7 @@ def test_xt_history_source_converts_xt_bar_datetimes_to_local_naive() -> None:
         turnover=10100,
         gateway_name="XT",
     )
+    bar.extra = {"source": "xt"}
     xt_datafeed = FakeXtDatafeed([bar])
     output = object()
 
@@ -86,6 +87,7 @@ def test_xt_history_source_converts_xt_bar_datetimes_to_local_naive() -> None:
     assert bars[0].datetime.tzinfo is None
     assert bars[0] is not bar
     assert bar.datetime.tzinfo == ZoneInfo("Asia/Shanghai")
+    assert bars[0].extra == {"source": "xt"}
     assert xt_datafeed.query_outputs == [output]
 
 

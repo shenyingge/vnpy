@@ -36,7 +36,9 @@ class XtHistorySource(StockAHistorySource):
         normalized: list[BarData] = []
 
         for bar in bars:
-            normalized.append(replace(bar, datetime=normalize_cn_datetime(bar.datetime)))
+            normalized_bar: BarData = replace(bar, datetime=normalize_cn_datetime(bar.datetime))
+            normalized_bar.extra = bar.extra
+            normalized.append(normalized_bar)
 
         return normalized
 
