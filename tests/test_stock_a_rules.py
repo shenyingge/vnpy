@@ -31,10 +31,13 @@ def test_round_lot_rounds_down_to_lot_size() -> None:
     assert round_lot(99) == 0
 
 
-def test_calculate_sellable_volume_uses_position_and_freeze_constraints() -> None:
+def test_calculate_sellable_volume_returns_raw_sellable_shares() -> None:
     position = make_position(volume=1300, yd_volume=900, frozen=150)
 
-    assert calculate_sellable_volume(position) == 700
+    sellable = calculate_sellable_volume(position)
+
+    assert sellable == 750
+    assert round_lot(sellable) == 700
 
 
 def test_can_sell_rejects_non_multiple_request_when_sellable_is_full_lots() -> None:

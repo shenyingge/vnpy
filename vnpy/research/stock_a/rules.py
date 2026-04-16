@@ -32,20 +32,25 @@ def round_lot(volume: float, lot_size: int = 100) -> int:
 
 
 def calculate_sellable_volume(position: PositionData, lot_size: int = 100) -> int:
+    _ = lot_size
     base_sellable = max(min(position.volume, position.yd_volume) - position.frozen, 0)
-    return round_lot(base_sellable, lot_size=lot_size)
+    return int(base_sellable)
 
 
 def can_sell(position: PositionData, requested_volume: float, lot_size: int = 100) -> bool:
-    raw_sellable = max(min(position.volume, position.yd_volume) - position.frozen, 0)
+    raw_sellable = calculate_sellable_volume(position, lot_size=lot_size)
     if requested_volume <= 0 or lot_size <= 0:
         return False
+    if requested_volume != int(requested_volume):
+        return False
 
-    if requested_volume > raw_sellable:
+    requested = int(requested_volume)
+
+    if requested > raw_sellable:
         return False
 
     odd_lot = raw_sellable % lot_size
-    requested_remainder = requested_volume % lot_size
+    requested_remainder = requested % lot_size
 
     if odd_lot == 0:
         return requested_remainder == 0
