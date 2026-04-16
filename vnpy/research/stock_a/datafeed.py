@@ -11,6 +11,9 @@ class StockAResearchDatafeed(BaseDatafeed):
         self.source: StockAHistorySource = source
         self.backend: str = backend
 
+    def init(self, output: Callable = print) -> bool:
+        return self.source.init(output=output)
+
     @classmethod
     def from_backend(cls, backend: str = "xt") -> "StockAResearchDatafeed":
         if backend == "xt":
@@ -23,4 +26,4 @@ class StockAResearchDatafeed(BaseDatafeed):
         req: HistoryRequest,
         output: Callable = print,
     ) -> list[BarData]:
-        return self.source.query_bar_history(req)
+        return self.source.query_bar_history(req, output=output)

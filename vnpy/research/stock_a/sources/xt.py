@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -21,13 +22,21 @@ def normalize_cn_datetime(dt: datetime) -> datetime:
 class XtHistorySource(StockAHistorySource):
     xt_datafeed: object
 
-    def query_bar_history(self, req: HistoryRequest) -> list[BarData]:
-        bars: list[BarData] = self.xt_datafeed.query_bar_history(req)
+    def init(self, output: Callable = print) -> bool:
+        if hasattr(self.xt_datafeed, "init"):
+            return self.xt_datafeed.init(output=output)
+        return True
+
+    def query_bar_history(
+        self,
+        req: HistoryRequest,
+        output: Callable = print,
+    ) -> list[BarData]:
+        bars: list[BarData] = self.xt_datafeed.query_bar_history(req, output=output)
         normalized: list[BarData] = []
 
         for bar in bars:
-            bar.datetime = normalize_cn_datetime(bar.datetime)
-            normalized.append(bar)
+            normalized.append(replace(bar, datetime=normalize_cn_datetime(bar.datetime)))
 
         return normalized
 
@@ -41,8 +50,5 @@ def create_xt_history_source(
         xt_datafeed_factory = XtDatafeed
 
     xt_datafeed = xt_datafeed_factory()
-
-    if hasattr(xt_datafeed, "init"):
-        xt_datafeed.init()
 
     return XtHistorySource(xt_datafeed=xt_datafeed)

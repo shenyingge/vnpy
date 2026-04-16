@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -5,7 +6,14 @@ from vnpy.trader.object import BarData, HistoryRequest
 
 
 class StockAHistorySource(Protocol):
-    def query_bar_history(self, req: HistoryRequest) -> list[BarData]:
+    def init(self, output: Callable = print) -> bool:
+        ...
+
+    def query_bar_history(
+        self,
+        req: HistoryRequest,
+        output: Callable = print,
+    ) -> list[BarData]:
         ...
 
 
