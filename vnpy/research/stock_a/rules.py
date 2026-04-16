@@ -37,11 +37,20 @@ def calculate_sellable_volume(position: PositionData, lot_size: int = 100) -> in
 
 
 def can_sell(position: PositionData, requested_volume: float, lot_size: int = 100) -> bool:
-    rounded_requested = round_lot(requested_volume, lot_size=lot_size)
-    if rounded_requested <= 0:
+    raw_sellable = max(min(position.volume, position.yd_volume) - position.frozen, 0)
+    if requested_volume <= 0 or lot_size <= 0:
         return False
 
-    return rounded_requested <= calculate_sellable_volume(position, lot_size=lot_size)
+    if requested_volume > raw_sellable:
+        return False
+
+    odd_lot = raw_sellable % lot_size
+    requested_remainder = requested_volume % lot_size
+
+    if odd_lot == 0:
+        return requested_remainder == 0
+
+    return requested_remainder in (0, odd_lot)
 
 
 def is_trading_minute(dt: datetime) -> bool:
