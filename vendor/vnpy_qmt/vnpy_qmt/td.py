@@ -190,7 +190,7 @@ class TD(XtQuantTraderCallback):
         if contract:
             position_.product = contract.product
             position_.__post_init__()
-            self.gateway.on_position(position_)
+        self.gateway.on_position(position_)
 
     def on_stock_trade(self, trade: XtTrade):
         symbol, exchange = to_vn_contract(trade.stock_code)

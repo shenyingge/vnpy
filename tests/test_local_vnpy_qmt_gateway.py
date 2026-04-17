@@ -294,3 +294,39 @@ def test_td_close_handles_trader_with_disconnect_and_stop() -> None:
     assert td.inited is False
     assert trader.disconnect_called is True
     assert trader.stop_called is True
+
+
+def test_td_on_stock_position_reports_without_preloaded_contract() -> None:
+    class GatewayWithoutContract:
+        gateway_name = "QMT"
+
+        def __init__(self) -> None:
+            self.positions = []
+
+        def get_contract(self, vt_symbol):
+            return None
+
+        def on_position(self, position) -> None:
+            self.positions.append(position)
+
+        def write_log(self, message: str) -> None:
+            pass
+
+    gateway = GatewayWithoutContract()
+    td = TD(gateway)
+
+    position = types.SimpleNamespace(
+        stock_code="000001.SZ",
+        volume=100,
+        yesterday_volume=80,
+        open_price=10.0,
+        market_value=1200.0,
+    )
+
+    td.on_stock_position(position)
+
+    assert len(gateway.positions) == 1
+    emitted = gateway.positions[0]
+    assert emitted.symbol == "000001"
+    assert emitted.exchange == Exchange.SZSE
+    assert emitted.volume == 100
