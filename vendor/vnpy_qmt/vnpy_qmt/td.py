@@ -29,9 +29,9 @@ class TD(XtQuantTraderCallback):
         super(TD, self).__init__(*args, **kwargs)
         self.gateway = gateway
         self.count = 0
-        self.session_id = int(datetime.datetime.now().strftime('%H%M%S'))
+        self.session_id = 0
 
-        self.trader: XtQuantTrader = None
+        self.trader: XtQuantTrader | None = None
         self.account = None
         self.mini_path = None
         self.inited = False
@@ -41,6 +41,8 @@ class TD(XtQuantTraderCallback):
     def connect(self, settings: dict):
         account = settings['交易账号']
         self.mini_path = path = settings['mini路径']
+        configured_session = int(settings.get("会话编号", 0) or 0)
+        self.session_id = configured_session or int(datetime.datetime.now().strftime('%H%M%S'))
         acc = StockAccount(account)
         self.account = acc
         self.trader = XtQuantTrader(path=path, session=self.session_id)
@@ -58,6 +60,19 @@ class TD(XtQuantTraderCallback):
             self.inited = True
         else:
             self.write_log(f'订阅账户【失败】： {sub_msg}')
+
+    def close(self) -> None:
+        self.inited = False
+        if self.trader is None:
+            return
+
+        disconnect = getattr(self.trader, "disconnect", None)
+        if callable(disconnect):
+            disconnect()
+
+        stop = getattr(self.trader, "stop", None)
+        if callable(stop):
+            stop()
 
     def get_order_remark(self):
         self.count += 1

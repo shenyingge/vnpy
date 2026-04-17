@@ -30,9 +30,12 @@ class QmtGateway(BaseGateway):
 
     default_name = "QMT"
 
-    default_setting: Dict[str, str] = {
+    default_setting: Dict[str, object] = {
         "交易账号": "",
-        "mini路径": ""
+        "mini路径": "",
+        "会话编号": 0,
+        "启用行情": True,
+        "预加载合约": False,
     }
 
     TRADE_TYPE = (Product.ETF, Product.EQUITY, Product.BOND, Product.INDEX)
@@ -43,17 +46,25 @@ class QmtGateway(BaseGateway):
         self.contracts: Dict[str, ContractData] = {}
         self.md = MD(self)
         self.td = TD(self)
+        self.enable_md = True
         self.count = -1
         self.event_engine.register(EVENT_TIMER, self.process_timer_event)
 
     def connect(self, setting: dict) -> None:
-        self.md.connect(setting)
+        self.enable_md = bool(setting.get("启用行情", True))
+        self.md.enabled = self.enable_md
         self.td.connect(setting)
+        if self.enable_md:
+            self.md.connect(setting)
 
     def close(self) -> None:
         self.md.close()
+        self.td.close()
 
     def subscribe(self, req: SubscribeRequest) -> None:
+        if not self.enable_md:
+            self.write_log("行情功能已禁用，忽略订阅请求")
+            return None
         return self.md.subscribe(req)
 
     def send_order(self, req: OrderRequest) -> str:

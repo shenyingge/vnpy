@@ -29,21 +29,34 @@ class MD:
         self.th = None
         self.limit_ups = {}
         self.limit_downs = {}
+        self.enabled = True
+        self.subscriptions: set[int] = set()
 
     def close(self) -> None:
-        pass
+        unsubscribe = getattr(xtquant.xtdata, "unsubscribe_quote", None)
+        if callable(unsubscribe):
+            for seq in list(self.subscriptions):
+                unsubscribe(seq)
+        self.subscriptions.clear()
 
     def subscribe(self, req: SubscribeRequest) -> None:
-
-        return xtquant.xtdata.subscribe_quote(
+        if not self.enabled:
+            self.write_log("行情功能已禁用，忽略订阅请求")
+            return None
+        seq = xtquant.xtdata.subscribe_quote(
             stock_code=f'{req.symbol}.{From_VN_Exchange_map[req.exchange]}',
             period='tick',
             callback=self.on_tick
         )
+        self.subscriptions.add(seq)
+        return seq
 
     def connect(self, setting: dict) -> None:
-        self.get_contract()
-        return
+        self.enabled = bool(setting.get("启用行情", True))
+        if not self.enabled:
+            return
+        if bool(setting.get("预加载合约", False)):
+            self.get_contract()
 
     def get_contract(self):
         self.write_log('开始获取标的信息')
