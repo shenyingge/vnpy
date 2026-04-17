@@ -1,0 +1,9 @@
+{
+  "gateway_name": "QMT",
+  "account": "12345678",
+  "mini_path": "C:/QMT/userdata_mini",
+  "session_id": 9001,
+  "enable_md": false,
+  "preload_contracts": false,
+  "wait_seconds": 3.0
+}
